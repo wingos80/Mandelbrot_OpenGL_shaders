@@ -3,12 +3,13 @@ from OpenGL.GL import *
 from OpenGL.GL.shaders import compileProgram, compileShader
 import numpy as np
 from PIL import Image
+from shaders import vertex_src, fragment_src
 
 
 file1 = open("to_draw.txt", "w")
 file1.write('hey \n')
 # viewer parameters
-fbWidth, fbHeight = int(1920), int(1080)
+fbWidth, fbHeight = int(23904), int(14400)
 xmax, ymax = 1920.0, 1080.0                                 # Width and height (respectively) of display window
 center_xt, center_yt, zoomt = -0.5, 0.0, 1.01               # Target center and target zoom
 center_x, center_y, zoom = center_xt, center_yt, zoomt      # Actual center and actual zoom
@@ -156,109 +157,86 @@ def mscamera():
     #     zoomt = zoom
 
 
-# glsl code for vertex shader, the vertex shader is responsible for setting the vertex properties on screen,
-# and for passing the out data to the fragment shader
-vertex_src = """
-# version 400
-in vec3 a_position;
-in vec2 a_dims;
-in vec3 a_center_n_zoom;
-in vec4 wx_wy_maxitr;
-out vec2 scr_dim;
-out vec3 center_n_zoom;
-out vec2 wx_wy2;
-out vec2 maxitr;
-void main()
-{
-    gl_Position = vec4(a_position, 1.0);
-    scr_dim = a_dims;
-    center_n_zoom = a_center_n_zoom;
-    wx_wy2 = vec2(wx_wy_maxitr.x, wx_wy_maxitr.y);
-    maxitr = vec2(wx_wy_maxitr.z, wx_wy_maxitr.w);
-}
-"""
+# screenshot-ing functions
+def saveImageFromFBO(width, height):
+    glReadBuffer(GL_COLOR_ATTACHMENT0)
+    glPixelStorei(GL_PACK_ALIGNMENT, 1)
+    data = glReadPixels (0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
+    image = Image.new("RGB", (width, height), (0, 0, 0))
+    image.frombytes(data)
+    image = image.transpose(Image.FLIP_TOP_BOTTOM)
+    image.save ('tscreenshot.bmp')
+    image.save ('tscreenshot.png')
+    image.save ('tscreenshot.tiff')
 
-# glsl code for fragment shader, the fragment shader is responsible for colouring each and every pixel on the window
-fragment_src = """
-# version 400
-in vec2 scr_dim;
-in vec3 center_n_zoom;
-in vec2 wx_wy2;
-in vec2 maxitr;
-out vec4 out_color;
-void main()
-{   
-    int itr = 0;
-    int itr_limit = int(maxitr.x);
-    float brightness = maxitr.y;
-    float abs = 0.0;
-    float abs_lim = 16.0;
-    float converged = 0;
+def Screenshot():
+    # Setup framebuffer
+    framebuffer = glGenFramebuffers (1)
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer)
 
-    float zoom = center_n_zoom.z;
-    vec2 center = vec2(center_n_zoom.x, center_n_zoom.y);
-    vec2 xy = vec2(gl_FragCoord.x, gl_FragCoord.y);
-    vec2 z = vec2(0.0, 0.0);
-    vec2 zt = vec2(0.0, 0.0);
-    
-    vec4 clr_vec = vec4(0.0, 0.0, 0.0, 0.0);
-    for(int aae=0; aae<2; aae++)
-    {   
-        for(int bae=0; bae<2; bae++)
-        {   
-            vec2 aa = vec2(aae, bae);
-            vec2 c = ((xy-1.0+aa*0.5)/scr_dim-0.5)*wx_wy2/zoom+center;
+    # Setup colorbuffer
+    colorbuffer = glGenRenderbuffers (1)
+    glBindRenderbuffer(GL_RENDERBUFFER, colorbuffer)
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, fbWidth, fbHeight)
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, colorbuffer)
 
-            while (itr<itr_limit && abs<abs_lim)
-            {   
-                zt = z;
-                z = vec2(zt.x* zt.x - zt.y*zt.y + c.x, 
-                         2* zt.x*zt.y + c.y);
+    # Setup depthbuffer
+    depthbuffer = glGenRenderbuffers (1)
+    glBindRenderbuffer(GL_RENDERBUFFER,depthbuffer)
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, fbWidth, fbHeight)
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthbuffer)
 
-                abs = z.x*z.x + z.y*z.y;
-                itr++;
-            }
-            converged = int(abs<abs_lim);
-            float multiplier = -1.0/(1.0+exp(itr/18.0-2.0))+0.89;
-            
-            clr_vec.x = clr_vec.x + 0.25*itr/itr_limit*int(itr<=itr_limit)+converged;
-            clr_vec.y = clr_vec.y + 0.7*itr/itr_limit*int(itr<=itr_limit)+converged;
-            clr_vec.z = clr_vec.z + 1.0*itr/itr_limit*int(itr<=itr_limit)+converged;
-            itr = 0;
-        }
-    }
-    clr_vec = clr_vec/4.0*brightness;
-    clr_vec.w = 1.0;
+    # check status
+    status = glCheckFramebufferStatus (GL_FRAMEBUFFER)
+    if status != GL_FRAMEBUFFER_COMPLETE:
+        print( "Error in framebuffer activation")
 
-    if (xy.x > 959 && xy.x < 961)
-    {   
-        if (xy.y > 529 && xy.y < 551)
-        {
-            out_color = clr_vec;
-        } else
-        {
-        out_color = clr_vec;
-        }
-    } else if (xy.y > 539 && xy.y < 541)
-    {   
-        if (xy.x > 949 && xy.x < 971)
-        {
-            out_color = clr_vec;
-        } else
-        {
-        out_color = clr_vec;
-        }
-    } else 
-    {
-        out_color = clr_vec;
-    }
-}
-"""
+    glViewport(0, 0, fbWidth, fbHeight)
+    # setting shader inputs
+    shader_inputs = [-1.0, 1.0, 0.0,  # vertex 1 position
+                     1111111111.0, 1.0, 0.0,  # vertex 2 position
+                     -1.0, -1111111111.0, 0.0,  # vertex 3 position
+                     fbWidth, fbHeight,  # width and height of glfw window
+                     center_x, center_y, zoom,  # complex coordinate of center of complex plane, level of zoom
+                     wx, wy, # width and height of complex plane
+                     maxitr, brightness] # maximum iteration for mandelbrot iteration
+    # print(maxitr)
+    shader_inputs = np.array(shader_inputs, dtype=np.float32)
+    VBO = glGenBuffers(1)
+    glBindBuffer(GL_ARRAY_BUFFER, VBO)
+    glBufferData(GL_ARRAY_BUFFER, shader_inputs.nbytes, shader_inputs, GL_STATIC_DRAW)
+
+    AttribInit()
+
+    glDrawArrays(GL_TRIANGLES, 0, 3)
+
+    saveImageFromFBO(fbWidth, fbHeight)
+
+    glBindFramebuffer(GL_FRAMEBUFFER, GL_NONE)
+
+    glViewport(0, 0, int(xmax), int(ymax))
+
+# slimming the code
+def AttribInit():
+    position = glGetAttribLocation(program, "a_position")
+    glEnableVertexAttribArray(position)
+    glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
+
+    scr_dims = glGetAttribLocation(program, "a_dims")
+    glEnableVertexAttribArray(scr_dims)
+    glVertexAttribPointer(scr_dims, 2, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(36))
+
+    center_n_zoom = glGetAttribLocation(program, "a_center_n_zoom")
+    glVertexAttribPointer(center_n_zoom, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(44))
+    glEnableVertexAttribArray(center_n_zoom)
+
+    wx_wy = glGetAttribLocation(program, "wx_wy_maxitr")
+    glVertexAttribPointer(wx_wy, 4, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(56))
+    glEnableVertexAttribArray(wx_wy)
 
 # initializing glfw library
 if not glfw.init():
     raise Exception("glfw can not be initialized!")
-
 
 # creating the window
 window = glfw.create_window(int(xmax), int(ymax), "My OpenGL window", None, None)
@@ -285,129 +263,14 @@ glfw.set_scroll_callback(window, scroll_clb)
 program = compileProgram(compileShader(vertex_src, GL_VERTEX_SHADER), compileShader(fragment_src, GL_FRAGMENT_SHADER))
 glUseProgram(program)
 
-def saveImageFromFBO(width, height):
-    glReadBuffer(GL_COLOR_ATTACHMENT0)
-    glPixelStorei(GL_PACK_ALIGNMENT, 1)
-    data = glReadPixels (0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
-    image = Image.new("RGB", (width, height), (0, 0, 0))
-    image.frombytes(data)
-    image = image.transpose(Image.FLIP_TOP_BOTTOM)
-    image.save ('test.tiff')
-
-
-def setupSelfDefineFBO(program):
-    # Setup framebuffer
-    framebuffer = glGenFramebuffers (1)
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer)
-
-    # Setup colorbuffer
-    colorbuffer = glGenRenderbuffers (1)
-    glBindRenderbuffer(GL_RENDERBUFFER, colorbuffer)
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, fbWidth, fbHeight)
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, colorbuffer)
-
-    # Setup depthbuffer
-    depthbuffer = glGenRenderbuffers (1)
-    glBindRenderbuffer(GL_RENDERBUFFER,depthbuffer)
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, fbWidth, fbHeight)
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthbuffer)
-
-    # check status
-    status = glCheckFramebufferStatus (GL_FRAMEBUFFER)
-    if status != GL_FRAMEBUFFER_COMPLETE:
-        print( "Error in framebuffer activation")
-
-    glViewport(0, 0, fbWidth, fbHeight)
-    # setting shader inputs
-    shader_inputs = [-1111111.0, 1111111.0, 0.0,  # vertex 1 position
-                     1111111111.0, 1111111.0, 0.0,  # vertex 2 position
-                     -1111111.0, -1111111111.0, 0.0,  # vertex 3 position
-                     fbWidth, fbHeight,  # width and height of glfw window
-                     center_x, center_y, zoom,  # complex coordinate of center of complex plane, level of zoom
-                     wx, wy, # width and height of complex plane
-                     maxitr, brightness] # maximum iteration for mandelbrot iteration
-    # print(maxitr)
-    shader_inputs = np.array(shader_inputs, dtype=np.float32)
-    VBO = glGenBuffers(1)
-    glBindBuffer(GL_ARRAY_BUFFER, VBO)
-    glBufferData(GL_ARRAY_BUFFER, shader_inputs.nbytes, shader_inputs, GL_STATIC_DRAW)
-
-    # setting up all the attribpointers every frame
-    position = glGetAttribLocation(program, "a_position")
-    glEnableVertexAttribArray(position)
-    glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
-
-    scr_dims = glGetAttribLocation(program, "a_dims")
-    glEnableVertexAttribArray(scr_dims)
-    glVertexAttribPointer(scr_dims, 2, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(36))
-
-    center_n_zoom = glGetAttribLocation(program, "a_center_n_zoom")
-    glVertexAttribPointer(center_n_zoom, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(44))
-    glEnableVertexAttribArray(center_n_zoom)
-
-    wx_wy = glGetAttribLocation(program, "wx_wy_maxitr")
-    glVertexAttribPointer(wx_wy, 4, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(56))
-    glEnableVertexAttribArray(wx_wy)
-
-    glDrawArrays(GL_TRIANGLES, 0, 3)
-
-    saveImageFromFBO(fbWidth, fbHeight)
-
-    glBindFramebuffer(GL_FRAMEBUFFER, GL_NONE)
-
-    glViewport(0, 0, int(xmax), int(ymax))
-
-def Draw():
-    # setting shader inputs
-    shader_inputs = [-1.0, 1.0, 0.0,  # vertex 1 position
-                     1111111111.0, 1.0, 0.0,  # vertex 2 position
-                     -1.0, -1111111111.0, 0.0,  # vertex 3 position
-                     xmax, ymax,  # width and height of glfw window
-                     center_x, center_y, zoom,  # complex coordinate of center of complex plane, level of zoom
-                     wx, wy, # width and height of complex plane
-                     maxitr, brightness] # maximum iteration for mandelbrot iteration
-    # print(maxitr)
-    shader_inputs = np.array(shader_inputs, dtype=np.float32)
-    VBO = glGenBuffers(1)
-    glBindBuffer(GL_ARRAY_BUFFER, VBO)
-    glBufferData(GL_ARRAY_BUFFER, shader_inputs.nbytes, shader_inputs, GL_STATIC_DRAW)
-
-    # setting up all the attribpointers every frame
-    position = glGetAttribLocation(program, "a_position")
-    glEnableVertexAttribArray(position)
-    glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
-
-    scr_dims = glGetAttribLocation(program, "a_dims")
-    glEnableVertexAttribArray(scr_dims)
-    glVertexAttribPointer(scr_dims, 2, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(36))
-
-    center_n_zoom = glGetAttribLocation(program, "a_center_n_zoom")
-    glVertexAttribPointer(center_n_zoom, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(44))
-    glEnableVertexAttribArray(center_n_zoom)
-
-    wx_wy = glGetAttribLocation(program, "wx_wy_maxitr")
-    glVertexAttribPointer(wx_wy, 4, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(56))
-    glEnableVertexAttribArray(wx_wy)
-
-    glfw.poll_events()
-
-    # running the camera functions to facilitate camera movement
-    kbcamera()
-    mscamera()
-
-    # drawing on the window
-    glDrawArrays(GL_TRIANGLES, 0, 3)
-
 # frame time variables
 frame_times = [0, 0]
 
 # the main application loop
 while not glfw.window_should_close(window):
-    # move_size = wy/zoom * 0.005
-
     tic = timeit.default_timer()  # frame timer start
 
-    # setting shader inputs
+    # setting shader inputs everyframe
     shader_inputs = [-1.0, 1.0, 0.0,  # vertex 1 position
                      1111111111.0, 1.0, 0.0,  # vertex 2 position
                      -1.0, -1111111111.0, 0.0,  # vertex 3 position
@@ -415,28 +278,14 @@ while not glfw.window_should_close(window):
                      center_x, center_y, zoom,  # complex coordinate of center of complex plane, level of zoom
                      wx, wy, # width and height of complex plane
                      maxitr, brightness] # maximum iteration for mandelbrot iteration
-    # print(maxitr)
+
     shader_inputs = np.array(shader_inputs, dtype=np.float32)
     VBO = glGenBuffers(1)
     glBindBuffer(GL_ARRAY_BUFFER, VBO)
     glBufferData(GL_ARRAY_BUFFER, shader_inputs.nbytes, shader_inputs, GL_STATIC_DRAW)
 
-    # setting up all the attribpointers every frame
-    position = glGetAttribLocation(program, "a_position")
-    glEnableVertexAttribArray(position)
-    glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
-
-    scr_dims = glGetAttribLocation(program, "a_dims")
-    glEnableVertexAttribArray(scr_dims)
-    glVertexAttribPointer(scr_dims, 2, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(36))
-
-    center_n_zoom = glGetAttribLocation(program, "a_center_n_zoom")
-    glVertexAttribPointer(center_n_zoom, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(44))
-    glEnableVertexAttribArray(center_n_zoom)
-
-    wx_wy = glGetAttribLocation(program, "wx_wy_maxitr")
-    glVertexAttribPointer(wx_wy, 4, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(56))
-    glEnableVertexAttribArray(wx_wy)
+    # initialize attributes everyframe
+    AttribInit()
 
     glfw.poll_events()
 
@@ -460,10 +309,10 @@ while not glfw.window_should_close(window):
         print(f'frame time = {round(frame_times[0] / frame_times[1] * 1000, 2)}ms')
         frame_times[0], frame_times[1] = 0, 0
 
+    # screenshot sequence
     if scrcap:
         scrcap = False
-        setupSelfDefineFBO(program)
-
+        Screenshot()
 
 # terminate glfw, free up allocated resources
 glfw.terminate()
