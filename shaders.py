@@ -45,19 +45,22 @@ void main()
     vec2 z = vec2(0.0, 0.0);
     vec2 zt = vec2(0.0, 0.0);
 
+
     vec4 clr_vec = vec4(0.0, 0.0, 0.0, 0.0);
-    for(int aae=0; aae<2; aae++)
+    for(int aae=0; aae<1; aae++)
     {   
-        for(int bae=0; bae<2; bae++)
+        for(int bae=0; bae<1; bae++)
         {   
             vec2 aa = vec2(aae, bae);
-            vec2 c = ((xy-1.0+aa*0.5)/scr_dim-0.5)*wx_wy2/zoom+center;
+            vec2 c = ((xy-0.0+aa*1)/scr_dim-0.5)*wx_wy2/zoom+center;
 
             while (itr<itr_limit && abs<abs_lim)
             {   
                 zt = z;
+
                 z = vec2(zt.x* zt.x - zt.y*zt.y + c.x, 
                          2* zt.x*zt.y + c.y);
+
 
                 abs = z.x*z.x + z.y*z.y;
                 itr++;
@@ -71,7 +74,7 @@ void main()
             itr = 0;
         }
     }
-    clr_vec = clr_vec/4.0*brightness;
+    clr_vec = clr_vec/1.0*brightness;
     clr_vec.w = 1.0;
 
     if (xy.x > 959 && xy.x < 961)

@@ -7,19 +7,23 @@ from shaders import vertex_src, fragment_src
 
 file1 = open("to_draw.txt", "w")
 file1.write('hey \n')
+
 # viewer parameters
 fbWidth, fbHeight = int(7500), int(4518)
-xmax, ymax = 1920.0, 1080.0                                  # Width and height (respectively) of display window
+xmax, ymax = 1920.0, 1080.0                                 # Width and height (respectively) of display window
 center_xt, center_yt, zoomt = -0.5, 0.0, 1.01               # Target center and target zoom
 center_x, center_y, zoom = center_xt, center_yt, zoomt      # Actual center and actual zoom
 wx = 4                                                      # Width of complex plane displayed
 wy = wx * ymax / xmax                                       # Height of complex plane displayed
 newpos = [0, 0]                                             # Mouse pixel coordinate
 maxitr, brightness = 256.0, 6.0                             # Maximum iteration, brightness
+zoomspeed, panspeed = 1.0034, 0.007                         # Camera zoom speed, camera pan speed
 zoomin, zoomout, moveup, movedown, moveleft, moveright, newmouse, scrcap, zoomoutm = False, False, False, False, False, False, False, False, 1
 
+###########################################################################################################################
 # making all the glfw callback functions for keyboard and mouse inputs
 def mouse_button_clb(window, button, action, mode):
+    
     global newmouse, zoomin, zoomout, zoomoutm
     if button == glfw.MOUSE_BUTTON_3 and action == glfw.PRESS:
         zoomoutm = 1
@@ -44,12 +48,15 @@ def mouse_button_clb(window, button, action, mode):
         zoomout = False
         newmouse = False
 
+
 def cursor_pos_clb(window, xpos, ypos):
     mouse_coord(xpos, ypos)
+
 
 def scroll_clb(window, xoffset, yoffset):
     global zoomin, zoomout
     pass
+
 
 def key_input_clb(window, key, scancode, action, mode):
     global zoomin, zoomout, moveup, movedown, moveleft, moveright, maxitr, brightness, scrcap
@@ -79,27 +86,8 @@ def key_input_clb(window, key, scancode, action, mode):
     if key == glfw.KEY_A and action == glfw.PRESS:
         brightness -= 0.4
 
-    # if key == glfw.KEY_W and action == glfw.PRESS:
-    #     moveup = True
-    # if key == glfw.KEY_W and action == glfw.RELEASE:
-    #     moveup = False
-    #
-    # if key == glfw.KEY_A and action == glfw.PRESS:
-    #     moveleft = True
-    # if key == glfw.KEY_A and action == glfw.RELEASE:
-    #     moveleft = False
-    #
-    # if key == glfw.KEY_S and action == glfw.PRESS:
-    #     movedown = True
-    # if key == glfw.KEY_S and action == glfw.RELEASE:
-    #     movedown = False
-    #
-    # if key == glfw.EY_D and action == glfw.PRESS:
-    #     #     moveright = True
-    #     # if key == glfw.KEY_D and action == glfw.RELEASE:
-    #     #     moveright = False
-    #
-    # making all the keyboard and mouse actions
+###########################################################################################################################
+# Camera functions
 
 def mouse_coord(xpos, ypos):
     """
@@ -111,6 +99,7 @@ def mouse_coord(xpos, ypos):
     global newpos
     newpos = [xpos, ypos + 16]
 
+
 def camera():
     """
     controls for camera, manipulating the centers x & y, as well as manipulating the zoom
@@ -121,9 +110,9 @@ def camera():
     dz = zoomt - zoom
     zoom += dz*0.03
     if zoomin:
-        zoomt *= 1.01
+        zoomt *= zoomspeed
     if zoomout:
-        zoomt *= 1 / 1.010
+        zoomt *= 1 / zoomspeed
 
     dx = (center_xt - center_x)
     dy = (center_yt - center_y)
@@ -132,11 +121,30 @@ def camera():
     center_y += dy * 0.02
 
     if newmouse:
-        center_xt += 0.022*(newpos[0] / xmax - 0.5) * wx / zoom * zoomoutm
-        center_yt -= 0.022*(newpos[1] / ymax - 0.5) * wy / zoom * zoomoutm
+        center_xt += panspeed*(newpos[0] / xmax - 0.5) * wx / zoom * zoomoutm
+        center_yt -= panspeed*(newpos[1] / ymax - 0.5) * wy / zoom * zoomoutm
 
+###########################################################################################################################
+# slimming the code
+def AttribInit():
+    position = glGetAttribLocation(program, "a_position")
+    glEnableVertexAttribArray(position)
+    glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
 
-# screenshot-ing functions
+    scr_dims = glGetAttribLocation(program, "a_dims")
+    glEnableVertexAttribArray(scr_dims)
+    glVertexAttribPointer(scr_dims, 2, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(36))
+
+    center_n_zoom = glGetAttribLocation(program, "a_center_n_zoom")
+    glVertexAttribPointer(center_n_zoom, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(44))
+    glEnableVertexAttribArray(center_n_zoom)
+
+    wx_wy = glGetAttribLocation(program, "wx_wy_maxitr")
+    glVertexAttribPointer(wx_wy, 4, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(56))
+    glEnableVertexAttribArray(wx_wy)
+
+###########################################################################################################################
+### screenshot-ing functions
 def saveImageFromFBO(width, height):
     glReadBuffer(GL_COLOR_ATTACHMENT0)
     glPixelStorei(GL_PACK_ALIGNMENT, 1)
@@ -144,12 +152,14 @@ def saveImageFromFBO(width, height):
     image = Image.new("RGB", (width, height), (0, 0, 0))
     image.frombytes(data)
     image = image.transpose(Image.FLIP_TOP_BOTTOM)
-    image.save ('4thtry.bmp')
-    image.save ('4thtry.png')
-    image.save ('4thtry.jpg')
-    image.save ('4thtry.tiff')
+    image.save (f'{round(timeit.default_timer(),7)}4thtry.bmp')
+    image.save (f'{round(timeit.default_timer(),7)}4thtry.png')
+    image.save (f'{round(timeit.default_timer(),7)}4thtry.jpg')
+    image.save (f'{round(timeit.default_timer(),7)}4thtry.tiff')
+
 
 def Screenshot():
+    print("Printing screenshot...")
     # Setup framebuffer
     framebuffer = glGenFramebuffers (1)
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer)
@@ -182,7 +192,7 @@ def Screenshot():
                      center_x, center_y, zoom,  # complex coordinate of center of complex plane, level of zoom
                      fb_wx, fb_wy, # width and height of complex plane
                      maxitr, brightness] # maximum iteration for mandelbrot iteration
-    # print(maxitr)
+
     shader_inputs = np.array(shader_inputs, dtype=np.float32)
     VBO = glGenBuffers(1)
     glBindBuffer(GL_ARRAY_BUFFER, VBO)
@@ -198,23 +208,7 @@ def Screenshot():
 
     glViewport(0, 0, int(xmax), int(ymax))
 
-# slimming the code
-def AttribInit():
-    position = glGetAttribLocation(program, "a_position")
-    glEnableVertexAttribArray(position)
-    glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
-
-    scr_dims = glGetAttribLocation(program, "a_dims")
-    glEnableVertexAttribArray(scr_dims)
-    glVertexAttribPointer(scr_dims, 2, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(36))
-
-    center_n_zoom = glGetAttribLocation(program, "a_center_n_zoom")
-    glVertexAttribPointer(center_n_zoom, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(44))
-    glEnableVertexAttribArray(center_n_zoom)
-
-    wx_wy = glGetAttribLocation(program, "wx_wy_maxitr")
-    glVertexAttribPointer(wx_wy, 4, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(56))
-    glEnableVertexAttribArray(wx_wy)
+###########################################################################################################################
 
 # initializing glfw library
 if not glfw.init():
@@ -271,8 +265,7 @@ while not glfw.window_should_close(window):
 
     glfw.poll_events()
 
-    # running the camera functions to facilitate camera movement
-    # kbcamera()
+    # calling the camera functions to facilitate camera movement
     camera()
 
     # drawing on the window
@@ -289,6 +282,7 @@ while not glfw.window_should_close(window):
     # printing frame time averaged over 50 frames
     if frame_times[1] >= 50:
         print(f'frame time = {round(frame_times[0] / frame_times[1] * 1000, 2)}ms')
+        print(f"zoom: {zoom}")
         frame_times[0], frame_times[1] = 0, 0
 
     # screenshot sequence
@@ -296,9 +290,10 @@ while not glfw.window_should_close(window):
         scrcap = False
         Screenshot()
 
+
 # terminate glfw, free up allocated resources
 glfw.terminate()
 
-to_write = f'{center_x} \n {center_y} \n {zoom}'
+to_write = f'center x: {center_x} \n center y: {center_y} \n zoom: {zoom}'
 file1.write(to_write)
 file1.close()
