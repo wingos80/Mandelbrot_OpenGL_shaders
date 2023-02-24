@@ -8,13 +8,9 @@ from shaders import vertex_src, fragment_src
 file1 = open("to_draw.txt", "w")
 file1.write('hey \n')
 
-<<<<<<< HEAD:mandelbrot_shader.py
-=======
 # Inititalize main game clock
 clock = pg.time.Clock()
 
-
->>>>>>> 80df422 (refactoring):main.py
 # viewer parameters
 fbWidth, fbHeight = int(1920), int(1080)                    # Screenshot image dimensions
 xmax, ymax = 1920.0, 1080.0                                 # Width and height (respectively) of display window
