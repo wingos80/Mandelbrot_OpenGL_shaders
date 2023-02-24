@@ -9,7 +9,7 @@ file1 = open("to_draw.txt", "w")
 file1.write('hey \n')
 
 # viewer parameters
-fbWidth, fbHeight = int(7500), int(4518)
+fbWidth, fbHeight = int(1920), int(1080)                    # Screenshot image dimensions
 xmax, ymax = 1920.0, 1080.0                                 # Width and height (respectively) of display window
 center_xt, center_yt, zoomt = -0.5, 0.0, 1.01               # Target center and target zoom
 center_x, center_y, zoom = center_xt, center_yt, zoomt      # Actual center and actual zoom
@@ -209,6 +209,7 @@ def Screenshot():
     glViewport(0, 0, int(xmax), int(ymax))
 
 ###########################################################################################################################
+### Main
 
 # initializing glfw library
 if not glfw.init():
