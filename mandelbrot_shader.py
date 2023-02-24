@@ -9,6 +9,7 @@ file1 = open("to_draw.txt", "w")
 file1.write('hey \n')
 
 # git test1
+#git test2
 
 # viewer parameters
 fbWidth, fbHeight = int(1920), int(1080)                    # Screenshot image dimensions
