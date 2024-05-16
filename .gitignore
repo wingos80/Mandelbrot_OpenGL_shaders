@@ -1,8 +1,12 @@
 # Ignore the pictures folder
 pictures/
+<<<<<<< HEAD
 
 # Ignore the cache folder
 __pycache__/
 
 # Ignore the output file
+=======
+__pycache__/
+>>>>>>> ff2830e (added framerate limiter)
 to_draw.txt

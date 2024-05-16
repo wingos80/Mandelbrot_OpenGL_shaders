@@ -1,4 +1,5 @@
 import glfw, timeit, sys
+import pygame as pg
 from OpenGL.GL import *
 from OpenGL.GL.shaders import compileProgram, compileShader
 import numpy as np
@@ -12,15 +13,16 @@ file1.write('hey \n')
 clock = pg.time.Clock()
 
 # viewer parameters
-fbWidth, fbHeight = int(1920), int(1080)                    # Screenshot image dimensions
-xmax, ymax = 1920.0, 1080.0                                 # Width and height (respectively) of display window
-center_xt, center_yt, zoomt = -0.5, 0.0, 1.01               # Target center and target zoom
-center_x, center_y, zoom = center_xt, center_yt, zoomt      # Actual center and actual zoom
-wx = 4                                                      # Width of complex plane displayed
-wy = wx * ymax / xmax                                       # Height of complex plane displayed
-newpos = [0, 0]                                             # Mouse pixel coordinate
-maxitr, brightness = 256.0, 6.0                             # Maximum iteration, brightness
-zoomspeed, panspeed = 1.0034, 0.007                         # Camera zoom speed, camera pan speed
+target_fps                  = 90                          # Target frames per second
+fbWidth, fbHeight           = int(1600), int(2286)        # Screenshot image dimensions
+xmax, ymax                  = 1920.0, 1080.0              # Width and height (respectively) of display window
+center_xt, center_yt, zoomt = -0.5, 0.0, 1.01             # Target center and target zoom
+center_x, center_y, zoom    = center_xt, center_yt, zoomt # Actual center and actual zoom
+wx                          = 4                           # Width of complex plane displayed
+wy                          = wx * ymax / xmax            # Height of complex plane displayed
+newpos                      = [0, 0]                      # Mouse pixel coordinate
+maxitr, brightness          = 256.0, 6.0                  # Maximum iteration, brightness
+zoomspeed, panspeed         = 1.0134, 0.017               # Camera zoom speed, camera pan speed
 zoomin, zoomout, moveup, movedown, moveleft, moveright, newmouse, scrcap, zoomoutm = False, False, False, False, False, False, False, False, 1
 
 ###########################################################################################################################
@@ -155,10 +157,11 @@ def saveImageFromFBO(width, height):
     image = Image.new("RGB", (width, height), (0, 0, 0))
     image.frombytes(data)
     image = image.transpose(Image.FLIP_TOP_BOTTOM)
-    image.save (f'{round(timeit.default_timer(),7)}4thtry.bmp')
-    image.save (f'{round(timeit.default_timer(),7)}4thtry.png')
-    image.save (f'{round(timeit.default_timer(),7)}4thtry.jpg')
-    image.save (f'{round(timeit.default_timer(),7)}4thtry.tiff')
+    # image.save (f'{round(timeit.default_timer(),7)}.bmp')
+    image.save (f'{round(timeit.default_timer(),7)}.png')
+    image.save (f'{round(timeit.default_timer(),7)}.jpg')
+    # image.save (f'{round(timeit.default_timer(),7)}.tiff')
+    print('saved screenshot\n')
 
 
 def Screenshot():
@@ -248,6 +251,7 @@ frame_times = [0, 0]
 
 # the main application loop
 while not glfw.window_should_close(window):
+    _   = clock.tick(target_fps)
     tic = timeit.default_timer()  # frame timer start
     _   = clock.tick(target_fps)
 
@@ -285,10 +289,10 @@ while not glfw.window_should_close(window):
     frame_times[1] += 1
 
     # printing frame time averaged over 50 frames
-    if frame_times[1] >= 50:
+    if frame_times[1] >= 200:
         print(f'frame time = {round(frame_times[0] / frame_times[1] * 1000, 2)}ms')
         print(f"zoom: {zoom}")
-        frame_times[0], frame_times[1] = 0, 0
+        frame_times = [0, 0]
 
     # screenshot sequence
     if scrcap:

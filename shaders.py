@@ -3,7 +3,7 @@
 # glsl code for vertex shader, the vertex shader is responsible for setting the vertex properties on screen,
 # and for passing the out data to the fragment shader
 vertex_src = """
-# version 400
+#version 400
 in vec3 a_position;
 in vec2 a_dims;
 in vec3 a_center_n_zoom;
@@ -24,7 +24,7 @@ void main()
 
 # glsl code for fragment shader, the fragment shader is responsible for colouring each and every pixel on the window
 fragment_src = """
-# version 400
+#version 400
 in vec2 scr_dim;
 in vec3 center_n_zoom;
 in vec2 wx_wy2;
