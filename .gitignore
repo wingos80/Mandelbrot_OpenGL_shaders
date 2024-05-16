@@ -1,0 +1,8 @@
+# Ignore the pictures folder
+pictures/
+
+# Ignore the cache folder
+__pycache__/
+
+# Ignore the output file
+to_draw.txt

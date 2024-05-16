@@ -8,6 +8,13 @@ from shaders import vertex_src, fragment_src
 file1 = open("to_draw.txt", "w")
 file1.write('hey \n')
 
+<<<<<<< HEAD:mandelbrot_shader.py
+=======
+# Inititalize main game clock
+clock = pg.time.Clock()
+
+
+>>>>>>> 80df422 (refactoring):main.py
 # viewer parameters
 fbWidth, fbHeight = int(1920), int(1080)                    # Screenshot image dimensions
 xmax, ymax = 1920.0, 1080.0                                 # Width and height (respectively) of display window
@@ -246,6 +253,7 @@ frame_times = [0, 0]
 # the main application loop
 while not glfw.window_should_close(window):
     tic = timeit.default_timer()  # frame timer start
+    _   = clock.tick(target_fps)
 
     # setting shader inputs everyframe
     shader_inputs = [-1.0, 1.0, 0.0,  # vertex 1 position
