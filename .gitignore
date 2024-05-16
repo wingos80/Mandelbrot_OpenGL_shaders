@@ -1,0 +1,4 @@
+# Ignore the pictures folder
+pictures/
+__pycache__/
+to_draw.txt
