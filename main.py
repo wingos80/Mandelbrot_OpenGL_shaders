@@ -12,8 +12,6 @@ file1.write('hey \n')
 # Inititalize main game clock
 clock = pg.time.Clock()
 
-# git test1
-#git test2
 
 # viewer parameters
 target_fps                  = 90                          # Target frames per second
@@ -254,8 +252,8 @@ frame_times = [0, 0]
 
 # the main application loop
 while not glfw.window_should_close(window):
-    _   = clock.tick(target_fps)
     tic = timeit.default_timer()  # frame timer start
+    _   = clock.tick(target_fps)
 
     # setting shader inputs everyframe
     shader_inputs = [-1.0, 1.0, 0.0,  # vertex 1 position
